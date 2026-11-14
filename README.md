@@ -6,13 +6,21 @@
 
 ---
 
+## 🎥 Project Explanation & Demonstration Video
+* ▶️ **Full Video (Direct Link)**: [**`ABENEZER-HAILE-EXPLANATION.mp4`**](./ABENEZER-HAILE-EXPLANATION.mp4)
+* 📦 **Compressed Archive (34 MB)**: [**`ABENEZER-HAILE-EXPLANATION.7z`**](./ABENEZER-HAILE-EXPLANATION.7z)
+
+> **Overview**: Full platform walkthrough, architecture explanation, and live adversary-defense demonstration presented by **Abenezer Haile** (ID: **`CTC-017-26`**).
+
+---
+
 ### 📌 Project Provenance & Academic / Defense Attribution
 * **Original / Upstream Repository**: [https://github.com/NaodBrhane2738/GASHA](https://github.com/NaodBrhane2738/GASHA)  
   *This repository is cloned and built from the core GASHA platform engineered by Naod Brhane (`NaodBrhane2738/GASHA`).*
 * **Researcher / Contributor**: **Abenezer Haile**  
 * **Student / Candidate ID**: **`CTC-017-26`**  
 * **Cloned Project Repository**: [https://github.com/abeni74/GASHA-AGEIS](https://github.com/abeni74/GASHA-AGEIS)  
-* **Demonstration Video**: Includes the screen recording demonstration [`Screen Recording 2026-11-14 041849.mp4`](./Screen%20Recording%202026-11-14%20041849.mp4) (and high-ratio compressed archive [`Screen Recording 2026-11-14 041849.7z`](./Screen%20Recording%202026-11-14%20041849.7z)).
+* **Explanation Video**: [`ABENEZER-HAILE-EXPLANATION.mp4`](./ABENEZER-HAILE-EXPLANATION.mp4)
 
 ---
 
