@@ -362,6 +362,12 @@
       background: rgba(239, 68, 68, 0.08);
     }
 
+    .log-line.alert {
+      border-left-color: #EC4899;
+      background: rgba(236, 72, 153, 0.08);
+      border: 1px solid rgba(236, 72, 153, 0.3);
+    }
+
     .log-meta-strip {
       display: flex;
       justify-content: space-between;
@@ -410,12 +416,19 @@
       </div>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
       <div id="target-defense-radar" class="target-radar-badge unrestricted">
         <span>●</span>
-        <span id="radar-text">STATUS: UNRESTRICTED (Target Vulnerable)</span>
+        <span id="radar-text">STATUS: UNRESTRICTED</span>
       </div>
-      <button class="btn-fire amber" style="padding: 0.35rem 0.65rem;" onclick="resetQuarantine()">Reset Target Blocklist</button>
+      <div id="defense-alerts-badge" class="target-radar-badge" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.4); color: #FCA5A5;">
+        <span>🚨</span>
+        <span id="alerts-count-text">0 DEFENSE ALERTS</span>
+      </div>
+      <a href="http://localhost:3100/incidents" target="_blank" style="background: rgba(56, 189, 248, 0.12); border: 1px solid #38BDF8; color: #38BDF8; padding: 0.35rem 0.65rem; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+        🛡️ AEGIS ALERTS (3100) &rarr;
+      </a>
+      <button class="btn-fire amber" style="padding: 0.35rem 0.65rem; margin-top: 0;" onclick="resetQuarantine()">Reset Blocklist</button>
     </div>
   </header>
 
@@ -553,6 +566,7 @@
 
   <!-- Javascript & Execution Handlers -->
   <script>
+    const seenAlertIds = new Set();
     setInterval(pollTargetRadar, 2000);
     pollTargetRadar();
 
@@ -566,12 +580,16 @@
       if (code === 200) { lineClass += " allowed"; codeClass += " s200"; }
       else if (code === 401) { lineClass += " denied"; codeClass += " s401"; }
       else if (code === 403) { lineClass += " blocked"; codeClass += " s403"; }
+      else if (code === 'ALERT') { 
+        lineClass += " alert"; 
+        codeClass += " s403"; 
+      }
 
       entry.className = lineClass;
       entry.innerHTML = `
         <div class="log-meta-strip">
-          <span>[${timeStr}] ${type} &middot; ${latency ? latency + 'ms' : ''}</span>
-          ${code ? `<span class="${codeClass}">HTTP ${code}</span>` : ''}
+          <span>[${timeStr}] ${type} ${latency ? '&middot; ' + latency + 'ms' : ''}</span>
+          ${code ? `<span class="${codeClass}">${code === 'ALERT' ? 'GASHA DEFENSE ALERT' : 'HTTP ' + code}</span>` : ''}
         </div>
         <div class="log-payload">${text}</div>
       `;
@@ -607,7 +625,7 @@
             : `Neutralized pattern: [${l.detectedPattern}]. Target returned safe handled response.`;
           logTerminal('SSRF_PROBE', `${l.action} -> ${detail}`, l.status, l.latencyMs);
         });
-        pollTargetRadar();
+        setTimeout(pollTargetRadar, 300);
       } catch (err) {
         logTerminal('ERROR', 'SSRF execution error: ' + err.message);
       }
@@ -629,7 +647,7 @@
             : `Attempt ${l.step}/5: 401 Unauthorized for user "${l.user}"`;
           logTerminal('BRUTE_FORCE', detail, l.status, l.latencyMs);
         });
-        pollTargetRadar();
+        setTimeout(pollTargetRadar, 300);
       } catch (err) {
         logTerminal('ERROR', 'Brute-force error: ' + err.message);
       }
@@ -651,7 +669,7 @@
             : `Probe [${l.payload}] detected as [${l.detectedPattern}]. Neutralized.`;
           logTerminal('SQL_INJECTION', detail, l.status, l.latencyMs);
         });
-        pollTargetRadar();
+        setTimeout(pollTargetRadar, 300);
       } catch (err) {
         logTerminal('ERROR', 'SQLi error: ' + err.message);
       }
@@ -670,7 +688,7 @@
         (data.logs || []).forEach(l => {
           logTerminal('PATH_TRAVERSAL', `Probed ${l.action} -> Status: ${l.status}`, l.status, l.latencyMs);
         });
-        pollTargetRadar();
+        setTimeout(pollTargetRadar, 300);
       } catch (err) {
         logTerminal('ERROR', 'Traversal error: ' + err.message);
       }
@@ -690,17 +708,18 @@
           ? `403 ACCESS DENIED! Target denied unauthorized crown jewel access.`
           : `HTTP ${data.status} response`;
         logTerminal('CROWN_JEWEL', detail, data.status, data.latencyMs);
-        pollTargetRadar();
+        setTimeout(pollTargetRadar, 300);
       } catch (err) {
         logTerminal('ERROR', 'Secrets exploit error: ' + err.message);
       }
     }
 
-    // Target Quarantine Radar
+    // Target Quarantine Radar & Live Defense Alerts
     async function pollTargetRadar() {
       const ip = document.getElementById('cfg-attacker-ip').value.trim();
       const radar = document.getElementById('target-defense-radar');
       const radarText = document.getElementById('radar-text');
+      const alertsCountText = document.getElementById('alerts-count-text');
 
       try {
         const res = await fetch('/api/attack/status?ip=' + encodeURIComponent(ip));
@@ -708,10 +727,28 @@
 
         if (data.isQuarantined) {
           radar.className = "target-radar-badge quarantined";
-          radarText.innerHTML = `QUARANTINED BY GASHA CSOC (IP ${ip} BLOCKED)`;
+          radarText.innerHTML = `QUARANTINED BY GASHA (IP ${ip} BLOCKED)`;
         } else {
           radar.className = "target-radar-badge unrestricted";
-          radarText.innerHTML = `STATUS: UNRESTRICTED (Target Vulnerable)`;
+          radarText.innerHTML = `STATUS: UNRESTRICTED`;
+        }
+
+        if (alertsCountText && data.alertsCount !== undefined) {
+          alertsCountText.innerHTML = `${data.alertsCount} DEFENSE ALERTS`;
+        }
+
+        if (data.recentAlerts && Array.isArray(data.recentAlerts)) {
+          data.recentAlerts.forEach(a => {
+            if (!seenAlertIds.has(a.id)) {
+              seenAlertIds.add(a.id);
+              logTerminal(
+                '🚨 GASHA_DEFENSE_ALERT',
+                `[${a.severity}] ${a.ruleName} (${a.technique}) on node [${a.nodeId}]: ${a.summary}`,
+                'ALERT',
+                null
+              );
+            }
+          });
         }
       } catch (e) {}
     }

@@ -16,6 +16,23 @@ app = FastAPI(
 )
 
 TARGET_BASE = os.getenv("TARGET_URL", "http://localhost:3101")
+API_BASE = os.getenv("API_BASE_URL", "http://localhost:4000/api/v1")
+_cached_token: Optional[str] = None
+
+async def _get_auth_token() -> Optional[str]:
+    global _cached_token
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            res = await client.post(
+                f"{API_BASE}/auth/login",
+                json={"username": "analyst01", "password": "agis"}
+            )
+            if res.status_code == 200:
+                _cached_token = res.json().get("accessToken")
+                return _cached_token
+    except Exception:
+        pass
+    return None
 
 class AttackConfig(BaseModel):
     attackerIp: str = "198.51.100.101"
@@ -30,23 +47,74 @@ async def serve_console():
 
 @app.get("/api/attack/status")
 async def get_attacker_status(ip: str = "198.51.100.101"):
-    """Checks whether the specified attacker IP is currently blocked by GASHA."""
+    """Checks whether the specified attacker IP is currently blocked by GASHA, and returns live defense alerts."""
+    is_blocked = False
+    blocked_ips = []
+    disabled_sessions = []
+    
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             res = await client.get(f"{TARGET_BASE}/api/demo/security-state")
             if res.status_code == 200:
                 data = res.json()
                 blocked_ips = data.get("blockedIps", [])
+                disabled_sessions = data.get("disabledSessions", [])
                 is_blocked = ip in blocked_ips or "127.0.0.1" in blocked_ips
-                return {
-                    "attackerIp": ip,
-                    "isQuarantined": is_blocked,
-                    "allBlockedIps": blocked_ips,
-                    "allDisabledSessions": data.get("disabledSessions", [])
-                }
-    except Exception as e:
-        return {"error": str(e), "isQuarantined": False}
-    return {"isQuarantined": False}
+    except Exception:
+        pass
+
+    # Query live detections and alerts from GASHA Core API
+    alerts = []
+    incidents = []
+    try:
+        token = _cached_token or await _get_auth_token()
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            det_res = await client.get(f"{API_BASE}/detections", headers=headers)
+            if det_res.status_code == 401:
+                token = await _get_auth_token()
+                headers = {"Authorization": f"Bearer {token}"}
+                det_res = await client.get(f"{API_BASE}/detections", headers=headers)
+            if det_res.status_code == 200:
+                raw_dets = det_res.json()
+                for d in raw_dets[:15]:
+                    rule = d.get("rule", {})
+                    meta = d.get("metadata", {})
+                    alerts.append({
+                        "id": d.get("id"),
+                        "severity": d.get("severity") or rule.get("severity", "MEDIUM"),
+                        "ruleName": rule.get("name") or "Security Incursion",
+                        "summary": d.get("summary") or d.get("evidenceSummary") or rule.get("description", ""),
+                        "technique": d.get("technique") or meta.get("mitreTechniqueId", "T1190"),
+                        "nodeId": d.get("nodeId") or d.get("primaryAssetId", "web-app"),
+                        "timestamp": d.get("ts") or d.get("timestamp") or ""
+                    })
+
+            inc_res = await client.get(f"{API_BASE}/incidents", headers=headers)
+            if inc_res.status_code == 200:
+                for inc in inc_res.json()[:10]:
+                    incidents.append({
+                        "id": inc.get("id"),
+                        "title": inc.get("title"),
+                        "severity": inc.get("severity"),
+                        "status": inc.get("status"),
+                        "summary": inc.get("summary"),
+                        "pathId": inc.get("pathId") or inc.get("attackPathId"),
+                        "createdAt": inc.get("createdAt") or inc.get("openedAt")
+                    })
+    except Exception:
+        pass
+
+    return {
+        "attackerIp": ip,
+        "isQuarantined": is_blocked,
+        "allBlockedIps": blocked_ips,
+        "allDisabledSessions": disabled_sessions,
+        "alertsCount": len(alerts),
+        "recentAlerts": alerts,
+        "incidentsCount": len(incidents),
+        "recentIncidents": incidents
+    }
 
 @app.post("/api/attack/brute-force")
 async def attack_brute_force(cfg: AttackConfig):
