@@ -1,8 +1,18 @@
-# GASHA — Graph-Adaptive Security & Hardening Architecture
+# GASHA — Graph-Adaptive Security & Hardening Architecture (AEGIS)
 
 > **Autonomous Cyber Defense & Digital Twin Platform for Cloud-Native Environments**  
 > *Engineered as a high-performance Turborepo monorepo uniting graph topology, runtime telemetry, deterministic detection, and controlled response containment.*  
 > **AI & Agent Handbook**: See [`docs/AGENT_INTEGRATION_GUIDE.md`](docs/AGENT_INTEGRATION_GUIDE.md) for cross-contract parity, Four-Eyes Principle approval constraints, cryptographic audit logging, and WebSocket telemetry contracts.
+
+---
+
+### 📌 Project Provenance & Academic / Defense Attribution
+* **Original / Upstream Repository**: [https://github.com/NaodBrhane2738/GASHA](https://github.com/NaodBrhane2738/GASHA)  
+  *This repository is cloned and built from the core GASHA platform engineered by Naod Brhane (`NaodBrhane2738/GASHA`).*
+* **Researcher / Contributor**: **Abenezer Haile**  
+* **Student / Candidate ID**: **`CTC-017-26`**  
+* **Cloned Project Repository**: [https://github.com/abeni74/GASHA-AGEIS](https://github.com/abeni74/GASHA-AGEIS)  
+* **Demonstration Video**: Includes the screen recording demonstration [`Screen Recording 2026-11-14 041849.mp4`](./Screen%20Recording%202026-11-14%20041849.mp4) (and high-ratio compressed archive [`Screen Recording 2026-11-14 041849.7z`](./Screen%20Recording%202026-11-14%20041849.7z)).
 
 ---
 
